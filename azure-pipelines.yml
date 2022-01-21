@@ -60,12 +60,12 @@ steps:
     publishTestResults: true
     projects: '**/*.Tests.csproj'
 
-- task: PublishCodeCoverageResults@1
-  displayName: 'Publish Code Coverage Results'
-  inputs:
-    codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(Build.SourcesDirectory)/**/TestResults/Coverage/*.xml'
-    failIfCoverageEmpty: true
+# - task: PublishCodeCoverageResults@1
+#   displayName: 'Publish Code Coverage Results'
+#   inputs:
+#     codeCoverageTool: 'Cobertura'
+#     summaryFileLocation: '$(Build.SourcesDirectory)/**/TestResults/Coverage/*.xml'
+#     failIfCoverageEmpty: true
 
 - task: DotNetCoreCLI@2
   displayName: 'Publish the project - $(buildConfiguration)'
