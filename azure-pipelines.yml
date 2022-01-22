@@ -1,46 +1,65 @@
+# # ASP.NET Core
+# # Build and test ASP.NET Core projects targeting .NET Core.
+# # Add steps that run tests, create a NuGet package, deploy, and more:
+# # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+name : NetCore-CustomerApi-CI
 trigger:
-- unit-tests
-
+  branches:
+    include:
+      - unit-tests
+ 
 pool:
-  vmImage: 'windows-latest'
-
+  vmImage: 'windows-latest' # select windows as the agent
+ 
 variables:
-  BuildConfiguration: Release
-
+  buildConfiguration: 'Release'
+ 
 steps:
-- task: UseDotNet@2
-  displayName: 'Use .NET Core sdk'
+# # Install all package dependencies to the correct state matching the package references in your project file (.csproj)
+- task: DotNetCoreCLI@2  
   inputs:
-    packageType: sdk
-    version: 5.x
-    installationPath: $(Agent.ToolsDirectory)/dotnet
-- task: DotNetCoreCLI@2  
-  displayName: 'dotnet restore'  
-  inputs:  
-    command: restore  
-    projects: '**/*.csproj'  
-    includeNuGetOrg: true  
-- task: DotNetCoreCLI@2  
-  displayName: 'dotnet build'  
-  inputs:  
-    command: build  
+    command: 'restore'
     projects: '**/*.csproj'
-- task: DotNetCoreCLI@2  
-  displayName: 'dotnet test'  
-  inputs:  
-    command: test  
-    projects: '**/*.Tests.csproj'  
-    arguments: '--configuration $(BuildConfiguration) --collect "Code coverage"'  
-    testRunTitle: UnitTests
+  displayName: 'Restore Nuget Packages'
+ 
+ # # Build the dot net project with 
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--no-restore'
+  displayName: 'Build projects'
+ 
+ # # Run the test cases and generate a coverage report
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: 'test'
+    projects: '**/*Test.csproj'
+    arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./MyCoverage/'
+    publishTestResults: true
+ 
+ # # Publish the coverage report to show it in the summary section
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage Results'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(Build.SourcesDirectory)/**/MyCoverage/coverage.cobertura.xml'
+    failIfCoverageEmpty: true
 
-- script: 'dotnet tool install --global dotnet-reportgenerator-globaltool --version 4.5.8'  
-  displayName: 'Install ReportGenerator tool' 
+# # Create a ZIP of the project 
+- task: ArchiveFiles@2
+  displayName: 'Archive files'
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    replaceExistingArchive: true
+ 
+ # # Publish the ZIP folder as an artifact to be used in the release pipeline
+- upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+  artifact: drop
 
-- script: 'reportgenerator -reports:$(Agent.TempDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/coverlet/reports -reporttypes:"Cobertura"'  
-  displayName: 'Create reports'
 
-- task: PublishCodeCoverageResults@1  
-  displayName: 'Publish code coverage'  
-  inputs:  
-    codeCoverageTool: Cobertura  
-    summaryFileLocation: '$(Build.SourcesDirectory)/coverlet/reports/Cobertura.xml'  
