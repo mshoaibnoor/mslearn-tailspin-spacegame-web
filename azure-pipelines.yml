@@ -33,33 +33,67 @@ steps:
     custom: 'tool'
     arguments: 'install --global dotnet-reportgenerator-globaltool'
 
-
 - task: DotNetCoreCLI@2
+  displayName: 'Run unit tests - $(buildConfiguration)'
   inputs:
     command: 'test'
-    projects: '**/*Tests.csproj'
-    arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/MyCoverage/'
-    publishTestResults: false
-    nobuild: true
-  displayName: 'Dotnet tests'
+    arguments: '--no-build --configuration $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
+    publishTestResults: true
+    projects: '**/Api.UnitTests.csproj'
+
+- script: |
+    reportgenerator -reports:$(Build.SourcesDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines
+  displayName: 'Create code coverage report'
 
 - task: PublishCodeCoverageResults@1
-  displayName: 'Publish Code Coverage Results'
+  displayName: 'Publish code coverage report'
   inputs:
-    codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(Build.SourcesDirectory)/**/MyCoverage/coverage.cobertura.xml'
-    failIfCoverageEmpty: true
+    codeCoverageTool: 'cobertura'
+    summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
 
-# # Create a ZIP of the project 
-- task: ArchiveFiles@2
-  displayName: 'Archive files'
+- task: DotNetCoreCLI@2
+  displayName: 'Publish the project - $(buildConfiguration)'
   inputs:
-    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
-    includeRootFolder: false
-    archiveType: zip
-    archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-    replaceExistingArchive: true
+    command: 'publish'
+    projects: '**/MyProject.Api.csproj'
+    publishWebProjects: false
+    arguments: '--no-build --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)'
+    zipAfterPublish: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: MyProjectApi'
+  condition: succeeded()
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'MyProjectApi'
+    publishLocation: 'Container'
+
+# - task: DotNetCoreCLI@2
+#   inputs:
+#     command: 'test'
+#     projects: '**/*Tests.csproj'
+#     arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/MyCoverage/'
+#     publishTestResults: false
+#     nobuild: true
+#   displayName: 'Dotnet tests'
+
+# - task: PublishCodeCoverageResults@1
+#   displayName: 'Publish Code Coverage Results'
+#   inputs:
+#     codeCoverageTool: 'Cobertura'
+#     summaryFileLocation: '$(Build.SourcesDirectory)/**/MyCoverage/coverage.cobertura.xml'
+#     failIfCoverageEmpty: true
+
+# # # Create a ZIP of the project 
+# - task: ArchiveFiles@2
+#   displayName: 'Archive files'
+#   inputs:
+#     rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+#     includeRootFolder: false
+#     archiveType: zip
+#     archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+#     replaceExistingArchive: true
  
- # # Publish the ZIP folder as an artifact to be used in the release pipeline
-- upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-  artifact: drop
+#  # # Publish the ZIP folder as an artifact to be used in the release pipeline
+# - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+#   artifact: drop
