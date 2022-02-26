@@ -31,7 +31,8 @@ steps:
     command: 'test'
     projects: '**/*Tests.csproj'
     arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/MyCoverage/'
-    publishTestResults: true
+    publishTestResults: false
+    nobuild: true
   displayName: 'Dotnet tests'
 
 - task: PublishCodeCoverageResults@1
